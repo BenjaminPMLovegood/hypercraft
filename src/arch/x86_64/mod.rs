@@ -125,6 +125,20 @@ impl<H: HyperCraftHal, PD: PerCpuDevices<H>, VD: PerVmDevices<H>> VM<H, PD, VD> 
         let (vcpu, vcpu_device) = self.vcpus.get_vcpu_and_device(vcpu_id).unwrap();
         loop {
             if let Some(exit_info) = vcpu.run_type15(linux) {
+                
+                let rip = exit_info.guest_rip as *const u8;
+                let length = exit_info.exit_instruction_length as usize;
+                debug!("rip:{:#x} length:{:#x}", exit_info.guest_rip, length);
+                // Create a slice from the host address.
+                let instruction_slice =
+                    unsafe { core::slice::from_raw_parts(rip, length) };
+
+                // Print the instruction.
+                for byte in instruction_slice {
+                    debug!("{:02x} ", byte);
+                }
+                debug!("{:#?}", instruction_slice);
+        
                 if exit_info.exit_reason == VmxExitReason::VMCALL {
                     let regs = vcpu.regs();
                     let id = regs.rax as u32;
