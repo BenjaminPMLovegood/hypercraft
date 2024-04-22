@@ -1,4 +1,5 @@
 use alloc::collections::VecDeque;
+use x86::msr::IA32_EFER;
 use x86_64::registers::debug;
 use core::fmt::{Debug, Formatter, Result};
 use core::{arch::asm, mem::size_of};
@@ -32,6 +33,13 @@ pub struct XState {
     guest_xss: u64,
 }
 
+pub enum VmCpuMode {
+    Real,
+    Protected,
+    Compatibility,  // IA-32E mode (CS.L = 0)
+    Mode64,         // IA-32E mode (CS.L = 1)
+}
+
 impl XState {
     /// Create a new [`XState`] instance with current host state
     fn new() -> Self {
@@ -45,6 +53,9 @@ impl XState {
         unsafe { Cr4::write(Cr4::read() | Cr4Flags::OSXSAVE) };
     }
 }
+
+const MSR_IA32_EFER_LMA_BIT: u64 = 1 << 10;
+const CR0_PE: usize = 1 << 0;
 
 /// A virtual CPU within a guest.
 #[repr(C)]
@@ -101,6 +112,25 @@ impl<H: HyperCraftHal> VmxVcpu<H> {
     pub fn unbind_from_current_processor(&self) -> HyperResult {
         unsafe { vmx::vmclear(self.vmcs.phys_addr() as u64)?;  }
         Ok(())
+    }
+
+    /// Get CPU mode of the guest.
+    pub fn get_cpu_mode(&self) -> VmCpuMode {
+        let ia32_efer = Msr::IA32_EFER.read();
+        let cs_access_right = VmcsGuest32::CS_ACCESS_RIGHTS.read().unwrap();
+        let cr0 = VmcsGuestNW::CR0.read().unwrap();
+        if (ia32_efer & MSR_IA32_EFER_LMA_BIT) != 0 {
+            if (cs_access_right & 0x2000) != 0 {
+                // CS.L = 1
+                return VmCpuMode::Mode64;
+            } else {
+                return VmCpuMode::Compatibility;
+            }
+        } else if (cr0 & CR0_PE) != 0 {
+            return VmCpuMode::Protected;
+        } else {
+            return VmCpuMode::Real;
+        }
     }
 
     /// Run the guest. It returns when a vm-exit happens and returns the vm-exit if it cannot be handled by this [`VmxVcpu`] itself.
