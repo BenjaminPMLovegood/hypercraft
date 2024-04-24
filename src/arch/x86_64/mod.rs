@@ -118,12 +118,13 @@ impl<H: HyperCraftHal, PD: PerCpuDevices<H>, VD: PerVmDevices<H>, G: GuestPageTa
                         Err(e) => panic!("nmi_handler failed: {e:?}"),
                     }
                 } else {
-                    let guest_rip = exit_info.guest_rip;
-                    let length = exit_info.exit_instruction_length;
-                    let instr = Self::decode_instr(self.ept.clone(), vcpu, guest_rip, length)?;
-                    let result = vcpu_device
-                        .vmexit_handler(vcpu, &exit_info)
-                        .or_else(|| self.device.vmexit_handler(vcpu, &exit_info, Some(instr)));
+                    let result = vcpu_device.vmexit_handler(vcpu, &exit_info).or_else(|| {
+                        let guest_rip = exit_info.guest_rip;
+                        let length = exit_info.exit_instruction_length;
+                        let instr = Self::decode_instr(self.ept.clone(), vcpu, guest_rip, length)
+                            .expect("decode instruction failed");
+                        self.device.vmexit_handler(vcpu, &exit_info, Some(instr))
+                    });
 
                     match result {
                         Some(result) => {
@@ -177,12 +178,13 @@ impl<H: HyperCraftHal, PD: PerCpuDevices<H>, VD: PerVmDevices<H>, G: GuestPageTa
                         Err(e) => panic!("nmi_handler failed: {e:?}"),
                     }
                 } else {
-                    let guest_rip = exit_info.guest_rip;
-                    let length = exit_info.exit_instruction_length;
-                    let instr = Self::decode_instr(self.ept.clone(), vcpu, guest_rip, length)?;
-                    let result = vcpu_device
-                        .vmexit_handler(vcpu, &exit_info)
-                        .or_else(|| self.device.vmexit_handler(vcpu, &exit_info, Some(instr)));
+                    let result = vcpu_device.vmexit_handler(vcpu, &exit_info).or_else(|| {
+                        let guest_rip = exit_info.guest_rip;
+                        let length = exit_info.exit_instruction_length;
+                        let instr = Self::decode_instr(self.ept.clone(), vcpu, guest_rip, length)
+                            .expect("decode instruction failed");
+                        self.device.vmexit_handler(vcpu, &exit_info, Some(instr))
+                    });
                     debug!("this is result {:?}", result);
                     match result {
                         Some(result) => {
@@ -203,10 +205,10 @@ impl<H: HyperCraftHal, PD: PerCpuDevices<H>, VD: PerVmDevices<H>, G: GuestPageTa
                         }
                     }
                 }
-                debug!("test decode instruction");
-                let guest_rip = exit_info.guest_rip;
-                let length = exit_info.exit_instruction_length;
-                let _instr = Self::decode_instr(self.ept.clone(), vcpu, guest_rip, length)?;
+                // debug!("test decode instruction");
+                // let guest_rip = exit_info.guest_rip;
+                // let length = exit_info.exit_instruction_length;
+                // let _instr = Self::decode_instr(self.ept.clone(), vcpu, guest_rip, length)?;
             }
             // vcpu_device.check_events(vcpu)?;
         }
