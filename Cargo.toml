@@ -27,11 +27,17 @@ spinlock = { path = "../spinlock" }
 
 memory_addr = { path = "../memory_addr" }
 
+[dependencies.iced-x86]
+version = "1.21.0"
+default-features = false
+# See below for all features
+features = ["no_std", "decoder", "masm"]
+
 [target.'cfg(target_arch = "riscv64")'.dependencies]
 riscv = { git = "https://github.com/rcore-os/riscv", features = ["inline-asm"] }
 riscv-decode = { git = "https://github.com/KuangjuX/riscv-decode.git" }
 sbi-spec = { version = "0.0.6", features = ["legacy"] }
-sbi-rt = {version = "0.0.2", features = ["integer-impls", "legacy"]}
+sbi-rt = { version = "0.0.2", features = ["integer-impls", "legacy"] }
 
 [target.'cfg(target_arch = "x86_64")'.dependencies]
 raw-cpuid = "10.2"

@@ -1,8 +1,8 @@
 use bitflags;
 use core::marker::PhantomData;
 
-use crate::{HyperCraftHal, HostPhysAddr, GuestPhysAddr};
-use crate::{HyperResult, HyperError};
+use crate::{GuestPhysAddr, HostPhysAddr, HyperCraftHal};
+use crate::{HyperError, HyperResult};
 
 use page_table::MappingFlags;
 
@@ -13,6 +13,14 @@ pub struct NestedPageFaultInfo {
     pub access_flags: MappingFlags,
     /// Guest physical address that caused the nested page fault.
     pub fault_guest_paddr: GuestPhysAddr,
+}
+
+#[derive(Clone, Debug)]
+pub struct MmioFaultInfo {
+    pub fault_addr: GuestPhysAddr,
+    pub is_write: bool,
+    pub access_size: u8,
+    pub data: u64,
 }
 
 /// A 4K-sized contiguous physical memory page, it will deallocate the page

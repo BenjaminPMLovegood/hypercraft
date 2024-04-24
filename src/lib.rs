@@ -66,7 +66,7 @@ pub use arch::lower_aarch64_synchronous;
 
 use alloc::string::String;
 #[cfg(target_arch = "x86_64")]
-pub use arch::{VmxExitInfo, VmxExitReason};
+pub use arch::{GuestPageWalkInfo, VmxExitInfo, VmxExitReason};
 
 /// The error type for hypervisor operation failures.
 #[derive(Debug, PartialEq)]

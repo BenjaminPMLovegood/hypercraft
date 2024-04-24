@@ -2,6 +2,7 @@ use crate::{
     arch::VCpu, memory::PAGE_SIZE_4K, GuestPageTableTrait, HostPageNum, HostPhysAddr, HostVirtAddr,
     HyperResult, VmExitInfo,
 };
+use iced_x86::Instruction;
 
 /// The interfaces which the underlginh software(kernel or hypervisor) must implement.
 pub trait HyperCraftHal: Sized {
@@ -74,8 +75,12 @@ pub trait PerVmDevices<H: HyperCraftHal>: Sized {
     /// Creates a new [`PerVmDevices`].
     fn new() -> HyperResult<Self>;
     /// Handles vm-exits.
-    fn vmexit_handler(&mut self, vcpu: &mut VCpu<H>, exit_info: &VmExitInfo)
-        -> Option<HyperResult>;
+    fn vmexit_handler(
+        &mut self,
+        vcpu: &mut VCpu<H>,
+        exit_info: &VmExitInfo,
+        instr: Option<Instruction>,
+    ) -> Option<HyperResult>;
 }
 
 #[cfg(target_arch = "x86_64")]
