@@ -65,7 +65,7 @@ impl<H: HyperCraftHal, G: GuestPageTableTrait> VM<H, G> {
                             }
                             HyperCallMsg::GetChar => {
                                 let c = sbi_rt::legacy::console_getchar();
-                                gprs.set_reg(GprIndex::A1, c);
+                                gprs.set_reg(GprIndex::A0, c);
                             }
                             HyperCallMsg::PutChar(c) => {
                                 sbi_rt::legacy::console_putchar(c);
