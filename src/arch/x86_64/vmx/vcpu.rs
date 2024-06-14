@@ -313,6 +313,13 @@ impl<H: HyperCraftHal> VmxVcpu<H> {
         Ok(VmcsGuestNW::RIP.write(VmcsGuestNW::RIP.read()? + instr_len as usize)?)
     }
 
+    /// Set the value of the guest's `RFLAGS`
+    pub fn set_guest_rflags(&mut self, rflags: usize, mask: usize) -> HyperResult {
+        let rflags = rflags | (VmcsGuestNW::RFLAGS.read()? & !mask);
+        VmcsGuestNW::RFLAGS.write(rflags)?;
+        Ok(())
+    }
+
     /// Add a virtual interrupt or exception to the pending events list,
     /// and try to inject it before later VM entries.
     pub fn queue_event(&mut self, vector: u8, err_code: Option<u32>) {
