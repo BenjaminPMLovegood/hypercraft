@@ -47,6 +47,8 @@ impl<H: HyperCraftHal, G: GuestPageTableTrait> VM<H, G> {
     pub fn run(&mut self, vcpu_id: usize) {
         let mut vm_exit_info: VmExitInfo;
         let mut gprs = GeneralPurposeRegisters::default();
+        // 設定時鐘中斷，定時脫出 loop
+        // 將 gprs 抽出到 vmm 層
         loop {
             let mut len = 4;
             let mut advance_pc = false;

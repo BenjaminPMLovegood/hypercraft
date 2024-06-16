@@ -9,6 +9,7 @@ mod vcpu;
 mod vm;
 mod vm_pages;
 mod vmexit;
+mod vmm;
 
 pub use ept::NestedPageTable;
 pub use regs::GprIndex;
@@ -17,6 +18,7 @@ pub use smp::PerCpu;
 pub use vcpu::VCpu;
 pub use vm::VM;
 pub use vmexit::VmExitInfo;
+pub use vmm::VMM;
 
 use self::csrs::{traps, ReadWriteCsr, RiscvCsrTrait, CSR};
 use self::detect::detect_h_extension;
