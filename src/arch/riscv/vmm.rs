@@ -39,14 +39,14 @@ impl<H: HyperCraftHal, G: GuestPageTableTrait> VMM<H, G> {
 
         info!("vmm run cpu{}", hart_id);
 
-        CSR.sie
-            .read_and_set_bits(traps::interrupt::SUPERVISOR_TIMER);
+        // CSR.sie
+        //     .read_and_set_bits(traps::interrupt::SUPERVISOR_TIMER);
 
         let mut id = 0;
         loop {
             debug!("執行虛擬機 {}", id);
 
-            set_next_trigger();
+            // set_next_trigger();
 
             self.vm_list[id].run(0);
 
