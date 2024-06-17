@@ -10,6 +10,7 @@ mod vm;
 mod vm_pages;
 mod vmexit;
 mod vmm;
+mod vmm_trap;
 
 pub use ept::NestedPageTable;
 pub use regs::GprIndex;
