@@ -72,6 +72,24 @@ impl<H: HyperCraftHal, G: GuestPageTableTrait> VMM<H, G> {
                     sbi_rt::set_timer(timer);
                 }
                 VmmTrap::TimerInterruptEmulation => {
+                    // XXX: 爲什麼需要阻斷 host 的 sie ？
+                    // nimbos 的時鐘中斷處理器也會 setTimer ，但並不是根據當前時間加上一個時間片
+                    // 而是根據上一次 setTimer(timer) 的 timer 加上一個時間片
+                    // 如果它 timer 加上時間片的增長速度比真實時間增長得還要慢，會發生以下循環：
+                    // 1.  虛擬機呼叫 SetTimer ，hypervisor 呼叫的 sbi_rt::set_timer 的時間點會比當下時間還要早
+                    // 2.  若不阻斷 sie.STIE ，一進入虛擬機，hypervisor 馬上被時鐘中斷
+                    // 3.  掉入 VmmTrap::TimerInterruptEmultaion ，也就是當前代碼
+                    // 4.  由於當前時間比虛擬機 timer 晚，注入 hvip.STIP
+                    // 5.a 若 hypervisor 時間片還沒到，timer 沒有重設，回到 2.
+                    // 5.b 若 hypervisor 時間片到了，timer 終於被重設到未來的時間點，進入虛擬機之後不再立刻觸發 hypervisor 的中斷
+                    //     但由於剛注入過 hvip.STIP ，虛擬機進入其時鐘中斷處理器，重新呼叫 setTimer ，回到 1.
+                    // 在整個循環中，虛擬機都沒辦法做到事。
+                    //
+                    // 若阻斷 sie.STIE ，則 nimbos 虛擬機不會頻繁跳入 hypervisor ，其 timer 追上真實時間的機會就增加了。
+                    //
+                    // 那總是在進入虛擬機之前關閉 sie.STIE 有沒有壞處呢？有的，如果虛擬機本身不會主動 SetTimer
+                    // sie.STIE 永遠不會被開啓，從而導致時鐘中斷無法中斷虛擬機的執行，單個虛擬機可以獨佔 CPU 資源
+                    // 所以下面這行到底要不要開啓，還是個兩難
                     CSR.sie
                         .read_and_clear_bits(traps::interrupt::SUPERVISOR_TIMER);
 
@@ -79,7 +97,7 @@ impl<H: HyperCraftHal, G: GuestPageTableTrait> VMM<H, G> {
                     for vm in &mut self.vm_list {
                         if time > vm.get_timer() {
                             // TODO: 僅注入到該 vm
-                            // debug!("注入 hvip.stip");
+                            // debug!("注入 hvip.STIP");
                             CSR.hvip
                                 .read_and_set_bits(traps::interrupt::VIRTUAL_SUPERVISOR_TIMER);
                         }
