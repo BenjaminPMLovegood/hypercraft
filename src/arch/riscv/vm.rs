@@ -76,8 +76,7 @@ impl<H: HyperCraftHal, G: GuestPageTableTrait> VM<H, G> {
     /// Run the host VM's vCPU with ID `vcpu_id`. Does not return.
     pub fn run(&mut self, vcpu_id: usize) -> VmmTrap {
         let mut vm_exit_info: VmExitInfo;
-        // 設定時鐘中斷，定時脫出 loop
-        // 將 gprs 抽出到 vmm 層
+        // VMM 設定時鐘中斷，使得 vm 能定時脫出 loop
         loop {
             // 第一次執行時，其實不需要 restore
             self.restore_state(vcpu_id);
@@ -179,6 +178,8 @@ impl<H: HyperCraftHal, G: GuestPageTableTrait> VM<H, G> {
         let vm_exit_info = vcpu.run();
 
         vcpu.save_gprs(&mut self.state.general_purpose_registers);
+        vcpu.save_virtual_hs_csrs();
+        vcpu.save_vs_csrs();
 
         return vm_exit_info;
     }
@@ -186,6 +187,8 @@ impl<H: HyperCraftHal, G: GuestPageTableTrait> VM<H, G> {
     fn restore_state(&mut self, vcpu_id: usize) {
         let vcpu = self.vcpus.get_vcpu(vcpu_id).unwrap();
         vcpu.restore_gprs(&self.state.general_purpose_registers);
+        vcpu.restore_vs_csrs();
+        vcpu.restore_virtual_hs_csrs();
         if self.state.advance_pc {
             vcpu.advance_pc(self.state.instruction_length);
         }

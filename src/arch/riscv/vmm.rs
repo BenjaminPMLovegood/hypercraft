@@ -45,6 +45,7 @@ impl<H: HyperCraftHal, G: GuestPageTableTrait> VMM<H, G> {
     pub fn run(&mut self, hart_id: usize) {
         let vm_number = self.vm_list.len();
         assert_ne!(vm_number, 0);
+        debug!("虛擬機數量 {}", vm_number);
 
         info!("vmm run cpu{}", hart_id);
 
@@ -54,7 +55,7 @@ impl<H: HyperCraftHal, G: GuestPageTableTrait> VMM<H, G> {
         let mut id = 0;
         self.set_switch_vm_timer();
         loop {
-            // debug!("執行虛擬機 {}", id);
+            debug!("執行虛擬機 {}", id);
 
             let vmm_trap = self.vm_list[id].run(0);
 

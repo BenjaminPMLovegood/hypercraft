@@ -6,7 +6,10 @@ use memoffset::offset_of;
 use tock_registers::LocalRegisterCopy;
 
 // use alloc::sync::Arc;
-use riscv::register::{htinst, htval, hvip, scause, sstatus, stval};
+use riscv::register::{
+    htimedelta, htinst, htval, hvip, scause, sstatus, stval, vsatp, vscause, vsepc, vsie,
+    vsscratch, vsstatus, vstval, vstvec,
+};
 
 use crate::arch::vmexit::PrivilegeLevel;
 use crate::arch::{traps, RiscvCsrTrait, CSR};
@@ -67,6 +70,7 @@ pub struct GuestVirtualHsCsrs {
     hie: usize,
     hgeie: usize,
     hgatp: usize,
+    hvip: usize,
 }
 
 /// CSRs written on an exit from virtualization that are used by the hypervisor to determine the cause
@@ -258,7 +262,58 @@ impl<H: HyperCraftHal> VCpu<H> {
         // Set hgatp
         // TODO: Sv39 currently, but should be configurable
         self.regs.virtual_hs_csrs.hgatp = token;
+    }
+
+    /// 恢復該虛擬機對應的 vs 系統暫存器
+    pub fn restore_vs_csrs(&mut self) {
         unsafe {
+            // TODO: 恢復 hvip 等等暫存器
+            core::arch::asm!(
+                "csrw htimedelta, {htimedelta}",
+                "csrw vsstatus, {vsstatus}",
+                "csrw vsie, {vsie}",
+                "csrw vstvec, {vstvec}",
+                "csrw vsscratch, {vsscratch}",
+                "csrw vsepc, {vsepc}",
+                "csrw vscause, {vscause}",
+                "csrw vstval, {vstval}",
+                "csrw vsatp, {vsatp}",
+                // "csrw vstimecmp, {vstimecmp}",
+                htimedelta = in(reg) self.regs.vs_csrs.htimedelta,
+                vsstatus = in(reg) self.regs.vs_csrs.vsstatus,
+                vsie = in(reg) self.regs.vs_csrs.vsie,
+                vstvec = in(reg) self.regs.vs_csrs.vstvec,
+                vsscratch = in(reg) self.regs.vs_csrs.vsscratch,
+                vsepc = in(reg) self.regs.vs_csrs.vsepc,
+                vscause = in(reg) self.regs.vs_csrs.vscause,
+                vstval = in(reg) self.regs.vs_csrs.vstval,
+                vsatp = in(reg) self.regs.vs_csrs.vsatp,
+                // vstimecmp = in(reg) self.regs.vs_csrs.vstimecmp
+            );
+            core::arch::riscv64::hfence_gvma_all();
+        }
+    }
+
+    /// 儲存該虛擬機對應 vs 系統暫存器
+    pub fn save_vs_csrs(&mut self) {
+        self.regs.vs_csrs.htimedelta = htimedelta::read();
+        self.regs.vs_csrs.vsstatus = vsstatus::read().bits();
+        self.regs.vs_csrs.vsie = vsie::read().bits();
+        self.regs.vs_csrs.vstvec = vstvec::read().bits();
+        self.regs.vs_csrs.vsscratch = vsscratch::read();
+        self.regs.vs_csrs.vsepc = vsepc::read();
+        self.regs.vs_csrs.vscause = vscause::read().bits();
+        self.regs.vs_csrs.vstval = vstval::read();
+        self.regs.vs_csrs.vsatp = vsatp::read().bits();
+
+        // vstimecmp 是 sstc 擴展中加入的，暫時不理會
+        // self.regs.vs_csrs.vstimecmp = ???
+    }
+
+    /// 恢復該虛擬機對應的 hgatp, hvip, ...
+    pub fn restore_virtual_hs_csrs(&mut self) {
+        unsafe {
+            // TODO: 恢復 vsstatus, vsie, vsatp 等等虛擬機的 csr
             core::arch::asm!(
                 "csrw hgatp, {hgatp}",
                 hgatp = in(reg) self.regs.virtual_hs_csrs.hgatp,
@@ -266,6 +321,10 @@ impl<H: HyperCraftHal> VCpu<H> {
             core::arch::riscv64::hfence_gvma_all();
         }
     }
+
+    /// 儲存該虛擬機對應的 hgatp, hvip
+    /// 有需要嗎？虛擬機內部能修改到這些暫存器？
+    pub fn save_virtual_hs_csrs(&mut self) {}
 
     /// Restore vCPU registers from the guest's GPRs
     pub fn restore_gprs(&mut self, gprs: &GeneralPurposeRegisters) {
