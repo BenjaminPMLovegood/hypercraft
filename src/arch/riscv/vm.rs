@@ -14,6 +14,7 @@ use crate::{
     arch::sbi::SBI_ERR_NOT_SUPPORTED, vcpus::VM_CPUS_MAX, GprIndex, GuestPageTableTrait,
     GuestPhysAddr, GuestVirtAddr, HyperCraftHal, HyperError, HyperResult, VCpu, VmCpus, VmExitInfo,
 };
+use alloc::collections::VecDeque;
 use riscv_decode::Instruction;
 use sbi_rt::{pmu_counter_get_info, pmu_counter_stop};
 
@@ -43,6 +44,7 @@ pub struct VM<H: HyperCraftHal, G: GuestPageTableTrait> {
     plic: PlicState,
     state: VMState,
     timer: u64,
+    input_buffer: VecDeque<usize>,
 }
 
 impl<H: HyperCraftHal, G: GuestPageTableTrait> VM<H, G> {
@@ -55,7 +57,20 @@ impl<H: HyperCraftHal, G: GuestPageTableTrait> VM<H, G> {
             plic: PlicState::new(0xC00_0000),
             state: VMState::new(),
             timer: u64::MAX,
+            input_buffer: VecDeque::new(),
         })
+    }
+
+    /// 給虛擬機的 input_buffer 加入
+    pub fn add_char_to_input_buffer(&mut self, c: usize) {
+        self.input_buffer.push_back(c);
+    }
+
+    fn read_from_input_buffer(&mut self) -> usize {
+        if let Some(c) = self.input_buffer.pop_front() {
+            return c;
+        }
+        return usize::MAX;
     }
 
     /// Initialize `VCpu` by `vcpu_id`.
@@ -96,7 +111,9 @@ impl<H: HyperCraftHal, G: GuestPageTableTrait> VM<H, G> {
                                 self.handle_base_function(base).unwrap();
                             }
                             HyperCallMsg::GetChar => {
-                                let c = sbi_rt::legacy::console_getchar();
+                                // let c = sbi_rt::legacy::console_getchar();
+                                let c = self.read_from_input_buffer();
+                                // debug!("sbi call GetChar, c = {}", c);
                                 self.state
                                     .general_purpose_registers
                                     .set_reg(GprIndex::A0, c);

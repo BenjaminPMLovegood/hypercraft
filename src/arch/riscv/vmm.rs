@@ -21,7 +21,7 @@ fn get_time() -> u64 {
 }
 
 // TODO: 確定 qemu 的時鐘頻率
-const TIME_SLICE: u64 = 200_0000;
+const TIME_SLICE: u64 = 20_0000;
 
 impl<H: HyperCraftHal, G: GuestPageTableTrait> VMM<H, G> {
     /// 創建新的 VMM ，底下無任何虛擬機
@@ -53,9 +53,11 @@ impl<H: HyperCraftHal, G: GuestPageTableTrait> VMM<H, G> {
             .read_and_set_bits(traps::interrupt::SUPERVISOR_TIMER);
 
         let mut id = 0;
+        let mut selected_vm_id_for_input = 0;
+        info!("由虛擬機 {} 控制獲取輸入", selected_vm_id_for_input);
         self.set_switch_vm_timer();
         loop {
-            debug!("執行虛擬機 {}", id);
+            // debug!("執行虛擬機 {}", id);
 
             let vmm_trap = self.vm_list[id].run(0);
 
@@ -107,7 +109,26 @@ impl<H: HyperCraftHal, G: GuestPageTableTrait> VMM<H, G> {
                     if time > self.switch_vm_timer {
                         debug!("現在時間 {}，時間片到期時間 {}", time, self.switch_vm_timer);
                         debug!("切換虛擬機");
+
+                        // 讀取 console 所有可讀字元
+                        loop {
+                            let c = sbi_rt::legacy::console_getchar();
+                            if c == usize::MAX {
+                                break;
+                            } else if c == 96 {
+                                selected_vm_id_for_input =
+                                    (selected_vm_id_for_input + 1) % vm_number;
+                                info!("由虛擬機 {} 控制獲取輸入", selected_vm_id_for_input);
+                            } else {
+                                info!("注入虛擬機 {} 輸入 {}", selected_vm_id_for_input, c);
+                                self.vm_list[selected_vm_id_for_input].add_char_to_input_buffer(c);
+                            }
+                        }
+
+                        // 設定下個時間片
                         self.set_switch_vm_timer();
+
+                        // 執行下一個虛擬機
                         id = (id + 1) % vm_number;
                     }
                 }

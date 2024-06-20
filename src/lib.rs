@@ -10,7 +10,8 @@
     non_camel_case_types,
     non_upper_case_globals,
     unused_imports,
-    unused_assignments
+    unused_assignments,
+    deprecated
 )]
 #![deny(missing_docs, warnings)]
 #![feature(
