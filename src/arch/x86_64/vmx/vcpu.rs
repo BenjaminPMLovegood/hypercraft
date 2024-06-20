@@ -383,6 +383,7 @@ impl<H: HyperCraftHal> VmxVcpu<H> {
             // 0x3f8..0x3f8 + 8, // COM1
             // We need to intercepted the access to COM2 ports.
             // Because we want to reserve this port for host Linux.
+            0x4..0x4 + 1, // ports for debug
             0x2f8..0x2f8 + 8, // COM2
             // 0x3e8..0x3e8 + 8, // COM3
             // 0x2e8..0x2e8 + 8, // COM4
@@ -1260,7 +1261,10 @@ impl<H: HyperCraftHal> VmxVcpu<H> {
             VmxExitReason::INTERRUPT_WINDOW => Some(self.set_interrupt_window(false)),
             VmxExitReason::PREEMPTION_TIMER => Some(self.handle_vmx_preemption_timer()),
             VmxExitReason::XSETBV => Some(self.handle_xsetbv()),
-            VmxExitReason::CR_ACCESS => Some(self.handle_cr()),
+            VmxExitReason::CR_ACCESS => {
+                info!("CR_ACCESS: {:#x?}, vcpu: {:#x?}", exit_info, self);
+                Some(self.handle_cr())
+            }
             VmxExitReason::CPUID => Some(if self.is_host {
                 self.handle_host_cpuid()
             } else {
