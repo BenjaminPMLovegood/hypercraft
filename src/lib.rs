@@ -10,11 +10,18 @@
     non_camel_case_types,
     non_upper_case_globals,
     unused_imports,
-    unused_assignments
+    unused_assignments,
+    deprecated
 )]
 #![deny(missing_docs, warnings)]
-
-#![feature(naked_functions, asm_const, negative_impls, stdsimd, inline_const, concat_idents)]
+#![feature(
+    naked_functions,
+    asm_const,
+    negative_impls,
+    stdsimd,
+    inline_const,
+    concat_idents
+)]
 
 #[macro_use]
 extern crate log;
@@ -39,16 +46,10 @@ mod vcpus;
 /// HyperCraft Result Define.
 pub type HyperResult<T = ()> = Result<T, HyperError>;
 
-
 #[cfg(not(target_arch = "aarch64"))]
-pub use arch::{
-    init_hv_runtime, GprIndex, HyperCallMsg, VmExitInfo,
-};
+pub use arch::{init_hv_runtime, GprIndex, HyperCallMsg, VmExitInfo};
 
-
-pub use arch::{
-    NestedPageTable, PerCpu, VCpu, VM,
-};
+pub use arch::{NestedPageTable, PerCpu, VCpu, VM};
 
 pub use hal::HyperCraftHal;
 pub use memory::{
@@ -57,11 +58,14 @@ pub use memory::{
 };
 pub use vcpus::VmCpus;
 
+#[cfg(target_arch = "riscv64")]
+pub use arch::VMM;
+
 #[cfg(target_arch = "aarch64")]
 pub use arch::lower_aarch64_synchronous;
 
 #[cfg(target_arch = "x86_64")]
-pub use arch::{VmxExitReason, VmxExitInfo};
+pub use arch::{VmxExitInfo, VmxExitReason};
 
 /// The error type for hypervisor operation failures.
 #[derive(Debug, PartialEq)]
